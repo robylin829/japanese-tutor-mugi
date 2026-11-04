@@ -13,16 +13,18 @@ if ($TailscaleHost) { $TailscaleHost | Set-Content (Join-Path $runDir 'tailscale
 $savedHosts = $env:MUGI_ALLOWED_HOSTS
 $savedLan = $env:MUGI_LAN
 $savedDataDir = $env:MUGI_DATA_DIR
+$savedManaged = $env:MUGI_MANAGED_SERVER
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 try {
   $env:MUGI_LAN = ''
+  $env:MUGI_MANAGED_SERVER = '1'
   if (-not $env:MUGI_DATA_DIR) { $env:MUGI_DATA_DIR = Join-Path $runDir 'oauth' }
   $env:MUGI_ALLOWED_HOSTS = $TailscaleHost
   $nodeExe = (Get-Command node.exe -ErrorAction Stop).Source
   $process = Start-Process -FilePath $nodeExe -ArgumentList ('"' + $viteFile + '"') -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runDir "stdout-$stamp.log") -RedirectStandardError (Join-Path $runDir "stderr-$stamp.log") -PassThru
   $created = (Get-CimInstance Win32_Process -Filter "ProcessId = $($process.Id)").CreationDate.ToUniversalTime().Ticks
-  @{ pid = $process.Id; created = $created; vite = $viteFile; root = $projectRoot; running = $true } | ConvertTo-Json | Set-Content -LiteralPath $stateFile
-} finally { $env:MUGI_ALLOWED_HOSTS = $savedHosts; $env:MUGI_LAN = $savedLan; $env:MUGI_DATA_DIR = $savedDataDir }
+  @{ pid = $process.Id; created = $created; vite = $viteFile; root = $projectRoot; running = $true } | ConvertTo-Json | Set-Content -Encoding UTF8 -LiteralPath $stateFile
+} finally { $env:MUGI_ALLOWED_HOSTS = $savedHosts; $env:MUGI_LAN = $savedLan; $env:MUGI_DATA_DIR = $savedDataDir; $env:MUGI_MANAGED_SERVER = $savedManaged }
 $ready = $false
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
   Start-Sleep -Milliseconds 500

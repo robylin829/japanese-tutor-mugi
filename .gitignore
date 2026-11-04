@@ -13,3 +13,7 @@ voicevox_engine/
 
 .local-run/
 test-results.json
+
+*.lnk
+
+/Mugi-Service-Control.exe

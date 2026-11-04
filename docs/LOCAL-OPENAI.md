@@ -67,3 +67,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Smoke-OpenAI.ps1 -
 
 以 Git 切回修改前 commit（見交付測試報告），先停止服務。不要刪除 `.env.local`、`.usage`、OAuth 憑證或瀏覽器資料。
 舊程式不認得 OpenAI API，回退後需在設定中選 ChatGPT 帳號。任何需清理的檔案先移到垃圾桶；做不到就保留並詢問。
+
+## 真正的服務總開關（桌面面板）
+
+雙擊桌面專案資料夾 `japanese-tutor-mugi` 裡的「Mugi 服務控制」捷徑。面板有服務總開關、執行狀態及「開啟服務網頁／新增 API key」按鈕。關閉的是 Node/Vite 伺服器程序；面板本身仍可用，按總開關就能重新啟動。關閉面板不會關閉服務。
+新取得程式碼時，可執行 `scripts/Create-ControlShortcut.ps1` 建立捷徑；或執行 `powershell -NoProfile -ExecutionPolicy Bypass -STA -File .\scripts\Control-Mugi.ps1`。
+網頁設定最上方也提供「關閉本機服務」，限電腦本機且服務由啟動腳本管理；關閉後網頁會離線，不能靠已離線的網頁重新啟動，請用獨立桌面面板。手機不能遠端關閉伺服器。關閉會中止進行中的回覆，但保留 API key、OAuth 憑證及紀錄。
+
+## Galaxy S24 / Android 16
+
+語音引擎改標示為「裝置內建」，不再顯示 iPhone。中文與日文保留獨立聲音選單及試聽，設定會顯示目前安全連線及 SpeechRecognition 介面是否可用；提供介面不代表已取得麥克風權限或已通過實機辨識驗收。
+手機透過私人 Tailscale HTTPS 連線並自行允許麥克風。若目前瀏覽器不提供語音辨識，使用鍵盤麥克風輸入。實際聲音取決於手機與瀏覽器安裝的語音；目前仍待 Tailscale 設定後在 S24 實機驗收。
+
+控制面板為 Windows .NET Framework 程式。原始碼在 `scripts/MugiControl.cs`；執行 `scripts/Build-Control.ps1` 可重新編譯，再用 `scripts/Create-ControlShortcut.ps1` 建立捷徑。產物與捷徑不納入 Git。

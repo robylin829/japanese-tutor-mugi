@@ -51,3 +51,34 @@ Mugi 本機私用版：實作與驗證報告
 2. 真實 API 驗收：powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Smoke-OpenAI.ps1 -RunPaidChecks
    腳本會限制批次估算花費最多 US$0.10、無自動重試，最後恢復原每日預算；目前因沒有 key 只驗證了安全退出。
 3. 電腦與手機安裝／登入 Tailscale，依 local-setup.txt 設定精確主機名稱及私人 Serve；提供瀏覽器版本後驗收 Android 16。
+
+
+2026-11-04 更新：真正的服務總開關、API key 入口與 Galaxy S24 語音
+
+本次交付
+- 桌面專案資料夾新增「Mugi 服務控制」捷徑，開啟獨立 Windows 控制面板。
+- 面板的總開關會啟動或停止真正的 Node/Vite 伺服器程序；不是暫停 AI。關閉面板不會關閉服務。
+- 面板另有「開啟服務網頁／新增 API key」按鈕；服務關閉時不可開網頁，需用面板重新啟動。
+- 網頁設定最上方新增「關閉本機服務」，限電腦本機並核對由啟動腳本管理的 PID／專案。
+- 服務回覆關閉確認後才關閉；手機、遠端 socket、跨站請求及未受管理的程序不能使用此端點關閉。
+- OpenAI API key 設定移到較前方，補上新增／更新提示及儲存成功訊息；不自動切換為付費 API。
+- Galaxy S24 / Android 16 的語音介面顯示「裝置內建」，中文與日文各有聲音及試聽。
+- 新增安全連線、SpeechRecognition 介面偵測及鍵盤語音輸入替代方式；不把介面可用誤當作已授予麥克風權限。
+- 最初理解為「暫停 AI」的未提交變更已撤回；被取代的臨時模組已移入 Windows 垃圾桶。
+
+最新驗證
+- npm test：1447 項，1445 通過、0 失敗、2 既有條件式略過。
+- npm run build：通過。
+- Windows 內建 .NET Framework csc 編譯控制面板成功，原始碼 scripts/MugiControl.cs；產物與捷徑不進 Git。
+- 已實際操作面板完成「啟動 → 關閉 → 再啟動」；關閉後 HTTP 網址離線，恢復後 GET /api/settings/server 回報 running=true、canStop=true。
+- 已實際從網頁按「關閉本機服務」，收到停止提示且 HTTP 端點離線；再由啟動腳本恢復服務。
+- 新增的停止權限、回應後排程關閉、設定 UI 及 Galaxy S24 能力提示測試全部通過。
+- 瀏覽器確認 API key 空白欄位可輸入；未代填任何金鑰、未執行付費 AI 請求。
+- 截圖：mugi-service-control.png、mugi-api-entry.png、mugi-s24-voice.png。
+
+目前狀態與操作
+- 本機服務保留執行中：http://127.0.0.1:3004
+- 開關服務：雙擊桌面 japanese-tutor-mugi 資料夾中的「Mugi 服務控制」捷徑。
+- 新增金鑰：啟動服務 → 開啟服務網頁 → 設定 → OpenAI API key → 儲存 → 手動選擇 OpenAI API。
+- 金鑰、OAuth 與既有紀錄在關閉／重啟後保留。
+- S24 實際麥克風及朗讀仍待私人 Tailscale HTTPS 連線與手機瀏覽器版本；未聲稱已在實體手機驗收。

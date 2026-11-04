@@ -1,3 +1,4 @@
+import { managedServer, handleServerControl } from './serverControl.ts';
 import { handleApiSettings } from './openai/apiRoutes.ts';
 import { apiSettings, apiLedger, apiProvider, API_MODELS } from './openai/api.ts';
 // Claude chat endpoint, served by the Vite dev server (vite.config.ts → claudeChatPlugin). The API key is read from
@@ -873,6 +874,12 @@ export function claudeChatPlugin(): Plugin {
       // the settings from the sheet: the keys in .env.local are written from this PC only, the daily budget from a trusted request (settingsRoutes.ts)
       server.middlewares.use('/api/settings', guardApi((req, res) => {
         const settingsPath = (req.url ?? '').split('?')[0];
+        if (settingsPath === '/server') {
+          void handleServerControl(req, res, guard, { canStop: () => managedServer(root), stop: async () => { await server.close(); process.exit(0); } }).catch(() => {
+            if (!res.headersSent) json(res, 500, { message: '服務控制暫時無法使用。' });
+          });
+          return;
+        }
         if (settingsPath === '/openai-api') {
           void handleApiSettings(req, res, root, mode, guard).catch(() => {
             if (!res.headersSent) json(res, 503, { message: 'OpenAI API 設定暫時無法讀取，請在電腦上檢查。' });

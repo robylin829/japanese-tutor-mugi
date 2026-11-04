@@ -1,3 +1,4 @@
+import { ServerControlSection } from './ServerControlSection';
 import { fetchOpenaiApiStatus, type OpenaiApiStatus } from '../game/openaiApiStatus';
 // 日語家教 (the tutor mode): a pure Japanese chat with a 2D portrait of the active character (人物: むぎ the hamster, 結衣, 悠真, or one
 // the player added). The replies come from Claude in teacher mode (game/claudeBrain askClaude); the chat, the 小提醒 and the notebook,
@@ -529,11 +530,12 @@ export default function TutorView() {
       )}
       {sheet === 'settings' && (
         <SettingsSheet theme="dark" onClose={() => setSheet(null)}>
+          <ServerControlSection />
+          <AiServiceSection theme="dark" providers={settings.providers} openaiModel={settings.openaiModel} openaiApiModel={settings.openaiApiModel}
+            claudeOk={claude === null ? null : claude.ok} chatgpt={chatgpt} onChange={(patch) => setPrefs(patch)} onRefresh={refreshChatGpt} onKeysSaved={keysSaved} />
           {/* the shared 聲音 section; 日語家教 has no sound effects, so its volume rows are 音樂 and 語音 */}
           <SoundSection audio={audio} tts={tts} cloud={cloud} volumes={['music', 'voice']} />
           <CloudKeysSection onSaved={keysSaved} />
-          <AiServiceSection theme="dark" providers={settings.providers} openaiModel={settings.openaiModel} openaiApiModel={settings.openaiApiModel}
-            claudeOk={claude === null ? null : claude.ok} chatgpt={chatgpt} onChange={(patch) => setPrefs(patch)} onRefresh={refreshChatGpt} onKeysSaved={keysSaved} />
           {settings.providers.includes('anthropic') && <BudgetSection />}
           {settings.providers.includes('anthropic') && <ModelSection theme="dark" chatModel={settings.chatModel} helperModel={settings.helperModel}
             serverModel={claude === null ? null : claude.model} onChange={(patch) => setPrefs(patch)} />}

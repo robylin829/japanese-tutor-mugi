@@ -9,6 +9,7 @@ import { LookupButton, TipsButton } from '../StudyButtons';
 
 // the voice group and the usage panel fetch / talk to the browser: a stub each keeps the test about the rows
 vi.mock('../VoiceSettings', () => ({
+  PhoneSpeechStatus: () => <div data-phone-status>Galaxy S24</div>,
   LangVoiceGroup: ({ title }: { title: string }) => <div className="as-lang" data-group={title}>{title}</div>,
 }));
 vi.mock('../UsagePanel', () => ({ UsagePanel: () => <div className="usage-panel">usage</div> }));

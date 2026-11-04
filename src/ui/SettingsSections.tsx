@@ -21,7 +21,7 @@ import { CHAT_MODEL_CHOICES, PERSONA_MAX_CHARS, PROVIDER_LABELS, chatModelLabel,
 import { logoutChatGpt, startChatGptLogin, type ChatGptStatus } from '../game/openaiStatus';
 import { fetchBudget, fetchKeysStatus, saveBudget, saveKeys, type BudgetStatus, type FieldStatus, type KeyName, type KeysStatus } from '../game/settingsApi';
 import { budgetLine } from '../game/budgetEstimate';
-import { LangVoiceGroup } from './VoiceSettings';
+import { LangVoiceGroup, PhoneSpeechStatus } from './VoiceSettings';
 import { UsagePanel } from './UsagePanel';
 import { IconClose } from './icons';
 
@@ -71,6 +71,7 @@ export function SoundSection({ audio, tts, cloud, volumes = VOLUME_ROWS.map(([k]
   return (
     <>
       <h3>聲音</h3>
+      <PhoneSpeechStatus />
       <label className="as-row"><span>靜音</span><input type="checkbox" checked={audio.muted} onChange={(e) => setAudioSettings({ muted: e.target.checked })} /></label>
       {VOLUME_ROWS.filter(([k]) => volumes.includes(k)).map(([k, label]) => (
         <label key={k} className="as-row"><span>{label}</span>
@@ -186,6 +187,7 @@ export function KeyField({ label, field, status, onSaved, plain = false, placeho
     setBusy(false);
     if (r.ok) {
       setValue('');
+      setNote(Object.values(patch).some((v) => v === null) ? '已清除' : '已儲存');
       onSaved(r.status);
     } else {
       setNote(r.message);
@@ -289,6 +291,7 @@ export function AiServiceSection({ providers, openaiModel, openaiApiModel = '', 
           {chatgpt?.signedIn && models.length > 0 && <label>ChatGPT 帳號模型<select aria-label="ChatGPT 模型" value={models.some((m) => m.slug === openaiModel) ? openaiModel : models[0].slug} onChange={(e) => onChange({ openaiModel: e.currentTarget.value })}>{models.map((m) => <option key={m.slug} value={m.slug}>{m.label}</option>)}</select></label>}
           <small>ChatGPT 使用自己方案的額度，不需要 OpenAI API 金鑰。登入憑證只留在電腦，與 API key 分開保存。登出不會清除 API key。請勿分享帳號。</small>
         </div> : <div className="as-ai-chatgpt">
+          <p><small>在這裡新增或更新 OpenAI API key，貼上後按「儲存」。儲存後再手動選擇 OpenAI API 服務。</small></p>
           <KeyField label="OpenAI API key" field="openaiApiKey" status={keys?.openaiApiKey ?? null} localPc={localPc} onSaved={changed} />
           {!localPc && <small>API key 與預算只能在電腦上設定；手機可以選服務及模型。</small>}
           <label>OpenAI API 模型<select aria-label="OpenAI API 模型" value={openaiApiModel || api?.model || 'gpt-5.4-mini'} onChange={(e) => onChange({ openaiApiModel: e.currentTarget.value })}>{(api?.models ?? ['gpt-5.4-mini']).map((m) => <option key={m} value={m}>{m}</option>)}</select></label>

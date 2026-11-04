@@ -28,8 +28,8 @@ export type TtsSettings = { on: boolean; zh: LangVoice; ja: LangVoice };
  * greyed out while the engine is not running (the status says so). A further engine is one more entry here.
  */
 export const ENGINE_CHOICES: Record<Lang, readonly { engine: TtsEngine; label: string }[]> = {
-  zh: [{ engine: 'browser', label: 'iPhone 內建' }, { engine: 'azure', label: 'Azure' }, { engine: 'google', label: 'Google' }],
-  ja: [{ engine: 'browser', label: 'iPhone 內建' }, { engine: 'azure', label: 'Azure' }, { engine: 'google', label: 'Google' }, { engine: 'voicevox', label: 'VOICEVOX' }],
+  zh: [{ engine: 'browser', label: '裝置內建' }, { engine: 'azure', label: 'Azure' }, { engine: 'google', label: 'Google' }],
+  ja: [{ engine: 'browser', label: '裝置內建' }, { engine: 'azure', label: 'Azure' }, { engine: 'google', label: 'Google' }, { engine: 'voicevox', label: 'VOICEVOX' }],
 };
 
 const KEY = 'mugi.tts.v2';

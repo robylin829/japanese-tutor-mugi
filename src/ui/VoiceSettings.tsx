@@ -2,6 +2,7 @@
 // (engine, voice, 語速, 音調, the VOICEVOX switch and credit).
 import { cloudDefaultVoice, cloudVoiceList, type CloudEngine } from '../game/cloudTts';
 import { ENGINE_CHOICES, TTS_PITCH_RANGE, TTS_RATE_RANGE, TTS_STEP, listVoices, pickVoice, previewVoice, setLangSettings, ttsSupported, type Lang, type LangVoice, type TtsEngine, type TtsSettings } from '../game/tts';
+import { speechCtor } from './useSpeechInput';
 import { VoicevoxSwitch } from './VoicevoxSwitch';
 
 /** a voice picker: automatic (the one pickVoice chooses) or one of the installed voices of the language; 試聽 speaks a sample */
@@ -80,4 +81,16 @@ export function LangVoiceGroup({ title, lang, tts, cloud }: { title: string; lan
       {credit && <div className="as-row"><span><small>{credit}</small></span></div>}
     </div>
   );
+}
+
+/** Galaxy S24 is the user's phone; capability detection remains browser-based rather than guessing from the model. */
+export function PhoneSpeechStatus() {
+  const secure = typeof window !== 'undefined' && window.isSecureContext === true;
+  const recognition = !!speechCtor();
+  return <div className="as-lang-note" role="status" aria-label="手機語音狀態">
+    <h4>Galaxy S24／Android 16 語音</h4>
+    <p><small>朗讀請選「裝置內建」，中文與日文可分別選聲音及試聽；可用聲音由手機與瀏覽器提供。</small></p>
+    <p><small>{secure ? '目前頁面為安全連線。' : '手機語音輸入需要安全連線；請透過私人 Tailscale HTTPS 網址開啟。'}</small></p>
+    <p><small>{recognition ? '此瀏覽器提供語音辨識介面；使用時需允許麥克風，實際辨識仍需在手機測試。' : '此瀏覽器未提供語音辨識；可用手機鍵盤的麥克風輸入，或改用支援的瀏覽器。'}</small></p>
+  </div>;
 }
