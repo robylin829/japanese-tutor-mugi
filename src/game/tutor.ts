@@ -48,6 +48,8 @@ export type TutorSettings = {
   helperModel: ChatModelId;
   providers: ProviderId[];
   openaiModel: string;
+  openaiApiModel?: string;
+  aiModeVersion?: 1;
   background: string;
   customBackgrounds: string[];
   backgroundOpts: Record<string, BackgroundOpt>;
@@ -89,7 +91,7 @@ export function builtinCharacter(id: BuiltinId): Character {
 export const DEFAULT_TUTOR: TutorSettings = {
   characters: BUILTIN_IDS.map(builtinCharacter),
   activeId: 'mugi',
-  sttLang: 'ja-JP', chatModel: '', helperModel: CLAUDE_MODEL_DEFAULT as ChatModelId, providers: [...DEFAULT_PROVIDERS], openaiModel: '',
+  sttLang: 'ja-JP', chatModel: '', helperModel: CLAUDE_MODEL_DEFAULT as ChatModelId, providers: [...DEFAULT_PROVIDERS], openaiModel: '', openaiApiModel: '', aiModeVersion: 1,
   background: 'classroom', customBackgrounds: [], backgroundOpts: {},
 };
 
@@ -145,12 +147,12 @@ function cleanBackgroundOpts(raw: unknown, ids: readonly string[]): Record<strin
 
 /** the routing of the settings, for an AI request body */
 export function aiServicesOf(s: TutorSettings): AiServices {
-  return { providers: [...s.providers], ...(s.openaiModel ? { openaiModel: s.openaiModel } : {}) };
+  return { providers: s.providers.slice(0, 1), ...(s.openaiModel ? { openaiModel: s.openaiModel } : {}), ...(s.openaiApiModel ? { openaiApiModel: s.openaiApiModel } : {}) };
 }
 
 /** whether any of the chosen services can answer now: Claude has its key, or ChatGPT is signed in with the plan */
-export function serviceReady(providers: readonly ProviderId[], ready: { anthropic: boolean; openai: boolean }): boolean {
-  return providers.some((p) => (p === 'anthropic' ? ready.anthropic : ready.openai));
+export function serviceReady(providers: readonly ProviderId[], ready: { anthropic: boolean; openai: boolean; 'openai-api'?: boolean }): boolean {
+  return providers.some((p) => !!ready[p]);
 }
 
 /** the ChatGPT model a player typed or picked: trimmed, at most OPENAI_MODEL_MAX_CHARS characters; anything else is '' */
@@ -291,7 +293,9 @@ export function migrateTutor(raw: unknown): TutorSettings {
     sttLang: o.sttLang === 'zh-TW' ? 'zh-TW' : 'ja-JP',
     chatModel: isChatModelId(o.chatModel) ? o.chatModel : '',
     helperModel: isChatModelId(o.helperModel) ? o.helperModel : DEFAULT_TUTOR.helperModel,
-    providers: parseProviderList(o.providers) ?? [...DEFAULT_PROVIDERS],
+    providers: o.aiModeVersion === 1 ? (parseProviderList(o.providers)?.slice(0, 1) ?? [...DEFAULT_PROVIDERS]) : [(parseProviderList(o.providers) ?? []).find((p) => p !== 'anthropic') ?? 'openai'],
+    aiModeVersion: 1,
+    openaiApiModel: cleanOpenaiModel(o.openaiApiModel),
     openaiModel: cleanOpenaiModel(o.openaiModel),
     background,
     customBackgrounds: added,

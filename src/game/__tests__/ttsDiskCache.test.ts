@@ -1,5 +1,6 @@
+import { testCleanup } from '../../testCleanup.ts';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,7 +19,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
-  rmSync(dir, { recursive: true, force: true });
+  testCleanup(dir, { recursive: true, force: true });
 });
 
 /** a fake mp3: an ID3 tag, then filler up to `size` bytes */
@@ -86,7 +87,7 @@ describe('TtsCache: memory, disk and restart', () => {
     await c1.settle();
     const c2 = new TtsCache({ dir: cdir });
     expect(await c2.lookup(K)).toBeDefined();
-    rmSync(join(cdir, ttsCacheFileName(K)));
+    testCleanup(join(cdir, ttsCacheFileName(K)));
     expect((await c2.lookup(K))?.length).toBe(60);
   });
 

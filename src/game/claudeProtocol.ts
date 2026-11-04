@@ -28,19 +28,19 @@ export function chatModelLabel(id: string): string {
  * The AI services, in the order the server tries them: each AI request carries its own list (`providers`, see
  * server/aiChain.ts). Claude is the API key service; ChatGPT is the signed-in account (server/openai).
  */
-export const PROVIDER_IDS = ['anthropic', 'openai'] as const;
+export const PROVIDER_IDS = ['anthropic', 'openai', 'openai-api'] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 /** the names on screen (設定 › AI 服務) */
-export const PROVIDER_LABELS: Record<ProviderId, string> = { anthropic: 'Claude', openai: 'ChatGPT' };
+export const PROVIDER_LABELS: Record<ProviderId, string> = { anthropic: 'Claude', openai: 'ChatGPT 帳號', 'openai-api': 'OpenAI API' };
 /** a request without a list (and an old save) uses Claude alone, as before */
-export const DEFAULT_PROVIDERS: ProviderId[] = ['anthropic'];
+export const DEFAULT_PROVIDERS: ProviderId[] = ['openai'];
 /** the most services a request may list (every id once) */
 export const PROVIDERS_MAX = 2;
 /** the longest ChatGPT model id a request may name */
 export const OPENAI_MODEL_MAX_CHARS = 100;
 
 /** the routing fields of an AI request: the services in order, and the ChatGPT model ('' or absent = the first one listed) */
-export type AiServices = { providers: ProviderId[]; openaiModel?: string };
+export type AiServices = { providers: ProviderId[]; openaiModel?: string; openaiApiModel?: string };
 
 export function isProviderId(v: unknown): v is ProviderId {
   return PROVIDER_IDS.some((p) => p === v);
@@ -51,6 +51,7 @@ export function parseProviderList(v: unknown): ProviderId[] | undefined {
   if (!Array.isArray(v) || v.length < 1 || v.length > PROVIDERS_MAX) return undefined;
   if (!v.every(isProviderId)) return undefined;
   if (new Set(v).size !== v.length) return undefined;
+  if (v.includes('openai-api') && v.length !== 1) return undefined;
   return [...v];
 }
 

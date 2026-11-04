@@ -58,12 +58,15 @@ export function responsesBody(req: LlmChatRequest | LlmCompleteRequest): Record<
 }
 
 /** Server-sent events of a response body: the `data:` JSON of each event (a chunk may cut an event anywhere). */
-export async function* readSSE(body: ReadableStream<Uint8Array> | null): AsyncGenerator<Record<string, unknown>> {
+export async function* readSSE(body: ReadableStream<Uint8Array> | null, signal?: AbortSignal): AsyncGenerator<Record<string, unknown>> {
   if (!body) return;
   const reader = body.getReader();
+  const onAbort = () => { void reader.cancel().catch(() => {}); };
+  if (signal?.aborted) onAbort();
+  signal?.addEventListener('abort', onAbort, { once: true });
   const decoder = new TextDecoder();
   let buffer = '';
-  for (;;) {
+  try { for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
@@ -74,6 +77,10 @@ export async function* readSSE(body: ReadableStream<Uint8Array> | null): AsyncGe
       const data = block.split(/\r?\n/).filter((line) => line.startsWith('data:')).map((line) => line.slice(5).replace(/^ /, '')).join('\n');
       if (data && data !== '[DONE]') yield JSON.parse(data) as Record<string, unknown>;
     }
+  } } finally {
+    signal?.removeEventListener('abort', onAbort);
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
@@ -81,10 +88,11 @@ export async function* readSSE(body: ReadableStream<Uint8Array> | null): AsyncGe
  * Reads a Responses stream: each output_text delta goes to onDelta; the end is response.completed. A failed, incomplete or
  * errored response throws an OpenAIError with the code OpenAI gave; a stream that ends without completion is a dropped line.
  */
-export async function collectStream(body: ReadableStream<Uint8Array> | null, onDelta: (text: string) => void): Promise<LlmResult> {
+export async function collectStream(body: ReadableStream<Uint8Array> | null, onDelta: (text: string) => void, signal?: AbortSignal): Promise<LlmResult> {
   let text = '';
-  let completed: { model?: string; status?: string } | null = null;
-  for await (const ev of readSSE(body)) {
+  let completed: { model?: string; status?: string; usage?: LlmResult['openaiUsage'] } | null = null;
+  for await (const ev of readSSE(body, signal)) {
+    if (ev.type === 'response.refusal.delta') throw new OpenAIError('模型拒絕回覆，請修改內容後重試。');
     if (ev.type === 'response.output_text.delta' && typeof ev.delta === 'string') {
       text += ev.delta;
       onDelta(ev.delta);
@@ -94,11 +102,11 @@ export async function collectStream(body: ReadableStream<Uint8Array> | null, onD
       const code = r.error?.code || r.incomplete_details?.reason || e.code || (ev.code as string | undefined) || 'response_failed';
       throw new OpenAIError(`ChatGPT 回覆未完成（${code}），請檢查額度或重試。`, { code });
     } else if (ev.type === 'response.completed') {
-      completed = (ev.response ?? {}) as { model?: string; status?: string };
+      completed = (ev.response ?? {}) as { model?: string; status?: string; usage?: LlmResult['openaiUsage'] };
     }
   }
   if (!completed) throw new OpenAIError('ChatGPT 連線中斷，請重試。');
-  return { text, model: completed.model, stopReason: completed.status ?? null };
+  return { text, model: completed.model, stopReason: completed.status ?? null, ...(completed.usage ? { openaiUsage: completed.usage } : {}) };
 }
 
 /** Upstream failure → HTTP status and a message for the player (never a token). */
@@ -120,17 +128,21 @@ function timeoutError(): OpenAIError {
   return new OpenAIError('ChatGPT 回應逾時，已中止', { timeout: true });
 }
 
-export function openaiProvider(transport: OpenAITransport): LlmProvider {
+export function openaiProvider(transport: OpenAITransport, apiKeyMode = false): LlmProvider {
   /** one request: the transport, then the stream read to its end */
   async function run(req: LlmChatRequest | LlmCompleteRequest, onDelta: (text: string) => void, signal: AbortSignal): Promise<LlmResult> {
-    const res = await transport('/responses', { body: JSON.stringify(responsesBody(req)), signal });
+    const res = await transport('/responses', { body: JSON.stringify({ ...responsesBody(req), ...(apiKeyMode ? { reasoning: { effort: 'none' } } : {}) }), signal });
     // an abort ends the body too (a real fetch does this itself; the cancel makes it certain)
     const onAbort = () => { void res.body?.cancel().catch(() => {}); };
     // an abort that came before the response (the caller stopped at once) has already fired: cancel now
     if (signal.aborted) onAbort();
     signal.addEventListener('abort', onAbort, { once: true });
     try {
-      return await collectStream(res.body, onDelta);
+      const result = await collectStream(res.body, onDelta, signal);
+      if (apiKeyMode) {
+        try { JSON.parse(result.text); } catch { throw new OpenAIError('OpenAI API 回覆格式不正確，請重試。'); }
+      }
+      return result;
     } catch (e) {
       if (signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
       throw e;
@@ -139,7 +151,7 @@ export function openaiProvider(transport: OpenAITransport): LlmProvider {
     }
   }
   return {
-    id: 'openai',
+    id: apiKeyMode ? 'openai-api' : 'openai',
     streamChat(req: LlmChatRequest, onDelta: (text: string) => void): LlmStream {
       const ctrl = new AbortController();
       let timedOut = false;

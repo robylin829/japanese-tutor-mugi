@@ -1,5 +1,6 @@
+import { testCleanup } from '../../testCleanup.ts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createVoicevoxProcess, engineExeName, voicevoxExe, voicevoxRoute, VoicevoxError, VOICEVOX_ARGS, type VoicevoxProcessDeps } from '../../../server/voicevoxProcess.ts';
@@ -199,7 +200,7 @@ describe('VOICEVOX engine folder: VOICEVOX_DIR, else <project>/voicevox_engine (
 
   afterEach(() => {
     // only the folders this file made
-    for (const d of made.splice(0)) rmSync(d, { recursive: true, force: true });
+    for (const d of made.splice(0)) testCleanup(d, { recursive: true, force: true });
   });
 
   /** a fresh project root (a temp folder) */

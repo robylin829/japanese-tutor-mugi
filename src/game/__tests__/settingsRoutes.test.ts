@@ -1,3 +1,4 @@
+import { testCleanup } from '../../testCleanup.ts';
 // The trusted rule (server/settingsAccess.ts) and the settings routes (server/settingsRoutes.ts) with a temp .env.local:
 // the keys status shows last four characters only, the full key never appears in any response, the budget is validated and
 // formatted, and a request that is not trusted is refused (403) and changes nothing.
@@ -42,7 +43,7 @@ beforeEach(() => {
   envPath = path.join(dir, '.env.local');
 });
 afterEach(() => {
-  fs.rmSync(dir, { recursive: true, force: true });
+  testCleanup(dir, { recursive: true, force: true });
 });
 
 const LOCAL = { host: '127.0.0.1:3004' };

@@ -30,51 +30,40 @@ afterEach(() => {
 });
 
 describe('AiServiceSection', () => {
-  it('lists the services in the order the player keeps them; a service that is off comes after', () => {
-    const r = render(<AiServiceSection providers={['openai', 'anthropic']} openaiModel="" claudeOk chatgpt={SIGNED_IN} onChange={() => {}} onRefresh={() => {}} localPc />);
-    expect(r.host.querySelector('h3')?.textContent).toBe('AI 服務');
-    expect(rowLabels(r.host)).toEqual(['ChatGPT', 'Claude']);
+  it('clearly lists the account and API as separate services, with no ordering buttons', () => {
+    const r = render(<AiServiceSection providers={['openai']} openaiModel="" claudeOk={false} chatgpt={SIGNED_IN} onChange={() => {}} onRefresh={() => {}} localPc />);
+    expect(rowLabels(r.host)).toEqual(['ChatGPT 帳號', 'OpenAI API']);
+    expect(r.host.querySelector('button[aria-label*="上移"]')).toBeNull();
+    expect(r.host.textContent).toContain('不會自動使用付費 API');
     r.unmount();
-    const off = render(<AiServiceSection providers={['anthropic']} openaiModel="" claudeOk chatgpt={SIGNED_OUT} onChange={() => {}} onRefresh={() => {}} localPc />);
-    expect(rowLabels(off.host)).toEqual(['Claude', 'ChatGPT']);
-    off.unmount();
   });
-
-  it('上移 swaps the row with the one above and saves the new order', () => {
+  it('manually selecting the API replaces the account rather than adding a fallback', () => {
     const onChange = vi.fn();
-    const r = render(<AiServiceSection providers={['anthropic', 'openai']} openaiModel="" claudeOk chatgpt={SIGNED_IN} onChange={onChange} onRefresh={() => {}} localPc />);
-    const up = r.host.querySelector('button[aria-label="ChatGPT 上移"]') as HTMLButtonElement;
-    expect(up.disabled).toBe(false);
-    act(() => up.click());
-    expect(onChange).toHaveBeenCalledWith({ providers: ['openai', 'anthropic'] });
-    expect((r.host.querySelector('button[aria-label="Claude 上移"]') as HTMLButtonElement).disabled).toBe(true);
+    const r = render(<AiServiceSection providers={['openai']} openaiModel="" claudeOk={false} chatgpt={SIGNED_IN} onChange={onChange} onRefresh={() => {}} localPc />);
+    act(() => switchOf(r.host, 'OpenAI API').click());
+    expect(onChange).toHaveBeenCalledWith({ providers: ['openai-api'] });
     r.unmount();
   });
-
-  it('the last service that is on cannot be switched off; turning a service on adds it to the end', () => {
+  it('the selected service stays selected when clicked again', () => {
     const onChange = vi.fn();
-    const r = render(<AiServiceSection providers={['anthropic']} openaiModel="" claudeOk chatgpt={SIGNED_IN} onChange={onChange} onRefresh={() => {}} localPc />);
-    expect(switchOf(r.host, 'Claude').checked).toBe(true);
-    expect(switchOf(r.host, 'Claude').disabled).toBe(true);
-    act(() => switchOf(r.host, 'ChatGPT').click());
-    expect(onChange).toHaveBeenCalledWith({ providers: ['anthropic', 'openai'] });
+    const r = render(<AiServiceSection providers={['openai']} openaiModel="" claudeOk={false} chatgpt={SIGNED_OUT} onChange={onChange} onRefresh={() => {}} localPc />);
+    act(() => switchOf(r.host, 'ChatGPT 帳號').click());
+    expect(switchOf(r.host, 'ChatGPT 帳號').checked).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
     r.unmount();
   });
-
-  it('with both on, switching one off keeps the other', () => {
-    const onChange = vi.fn();
-    const r = render(<AiServiceSection providers={['openai', 'anthropic']} openaiModel="" claudeOk chatgpt={SIGNED_IN} onChange={onChange} onRefresh={() => {}} localPc />);
-    act(() => switchOf(r.host, 'ChatGPT').click());
-    expect(onChange).toHaveBeenCalledWith({ providers: ['anthropic'] });
+  it('the API key is a password input on the PC; the budget is separately named', () => {
+    const r = render(<AiServiceSection providers={['openai-api']} openaiModel="" claudeOk={false} chatgpt={SIGNED_OUT} onChange={() => {}} onRefresh={() => {}} localPc />);
+    expect(r.host.querySelector('input[aria-label="OpenAI API key"]')?.getAttribute('type')).toBe('password');
+    expect(r.host.querySelector('input[aria-label="OpenAI API 每日預算"]')).not.toBeNull();
     r.unmount();
   });
-
-  it('the Claude row says whether its key is set', () => {
-    const r = render(<AiServiceSection providers={['anthropic']} openaiModel="" claudeOk={false} chatgpt={SIGNED_OUT} onChange={() => {}} onRefresh={() => {}} localPc />);
-    expect(r.host.textContent).toContain('未設定金鑰（在電腦的 .env.local 填 ANTHROPIC_API_KEY）');
+  it('a phone cannot enter the API key or change its budget', () => {
+    const r = render(<AiServiceSection providers={['openai-api']} openaiModel="" claudeOk={false} chatgpt={SIGNED_OUT} onChange={() => {}} onRefresh={() => {}} localPc={false} />);
+    expect(r.host.querySelector('input[aria-label="OpenAI API key"]')).toBeNull();
+    expect((r.host.querySelector('input[aria-label="OpenAI API 每日預算"]') as HTMLInputElement).disabled).toBe(true);
     r.unmount();
   });
-
   it('from a phone there is no sign-in button and no paste field: the note says ChatGPT signs in and out only on the PC', () => {
     const r = render(<AiServiceSection providers={['anthropic']} openaiModel="" claudeOk chatgpt={SIGNED_OUT} onChange={() => {}} onRefresh={() => {}} localPc={false} />);
     expect(button(r.host, '用 ChatGPT 登入')).toBeUndefined();

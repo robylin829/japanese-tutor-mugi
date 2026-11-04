@@ -21,6 +21,7 @@ export const BUDGET_ZERO_REMOTE_MESSAGE = '每日上限設為 0（不限）只�
 export type KeyStatus = { set: boolean; last4?: string };
 export type RegionStatus = { set: boolean; value?: string };
 export type KeysStatus = {
+  openaiApiKey: KeyStatus;
   anthropicKey: KeyStatus;
   anthropicWorkspace: KeyStatus;
   googleKey: KeyStatus;
@@ -30,6 +31,7 @@ export type KeysStatus = {
 
 /** the body fields of POST /api/settings/keys, and the .env.local name each one sets */
 const KEY_FIELDS = {
+  openaiApiKey: 'OPENAI_API_KEY',
   anthropicKey: 'ANTHROPIC_API_KEY',
   anthropicWorkspace: 'ANTHROPIC_WORKSPACE_ID',
   googleKey: 'GOOGLE_TTS_API_KEY',
@@ -52,6 +54,7 @@ function keyStatus(content: string, key: AllowedKey): KeyStatus {
 export function keysStatus(content: string): KeysStatus {
   const region = readEnvValue(content, 'AZURE_SPEECH_REGION');
   return {
+    openaiApiKey: keyStatus(content, 'OPENAI_API_KEY'),
     anthropicKey: keyStatus(content, 'ANTHROPIC_API_KEY'),
     anthropicWorkspace: keyStatus(content, 'ANTHROPIC_WORKSPACE_ID'),
     googleKey: keyStatus(content, 'GOOGLE_TTS_API_KEY'),

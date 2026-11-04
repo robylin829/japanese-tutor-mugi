@@ -1,3 +1,4 @@
+import { testCleanup } from '../testCleanup.ts';
 // Red-team: prompt injection through persona/name, chat body limits, routing and spend caps (server/claudeChat.ts, aiChain.ts,
 // prompts.ts), TTS parsing / SSML / cache names (server/tts.ts, ttsCache.ts) and image intake (src/game/customArt.ts).
 // Everything here is a pure function, a temp folder or a stub: no network, no provider call, no real .env.local.
@@ -84,8 +85,8 @@ describe('路由（providers、openaiModel）與模型', () => {
     expect(() => parseRouting(v as never)).toThrow(RoutingError);
   });
 
-  it('providers 缺省 → 只用 Claude；openaiModel 超過 100 字 → 拒絕', () => {
-    expect(parseRouting({}).providers).toEqual(['anthropic']);
+  it('providers 缺省 → 只用 ChatGPT 帳號；openaiModel 超過 100 字 → 拒絕', () => {
+    expect(parseRouting({}).providers).toEqual(['openai']);
     expect(() => parseRouting({ providers: ['openai'], openaiModel: 'm'.repeat(101) })).toThrow(RoutingError);
   });
 
@@ -104,7 +105,7 @@ describe('路由（providers、openaiModel）與模型', () => {
       expect(r.services).toHaveLength(1);
       expect(r.services[0].model).toBe('gpt-5');
     } finally {
-      fs.rmSync(root, { recursive: true, force: true });
+      testCleanup(root, { recursive: true, force: true });
     }
   });
 });
@@ -140,7 +141,7 @@ describe('聊天限流：每分鐘與同時進行數', () => {
 describe('每日花費上限', () => {
   let root = '';
   beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'mugi-redteam-cap-')); });
-  afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { testCleanup(root, { recursive: true, force: true }); });
 
   const writeEnv = (text: string) => fs.writeFileSync(path.join(root, '.env.local'), text);
 

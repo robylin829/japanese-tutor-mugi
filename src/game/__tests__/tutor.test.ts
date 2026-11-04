@@ -36,7 +36,7 @@ const CHARS: Character[] = [
 
 /** the model, background and other fields every settings object has by default (the characters, the mic language are listed apart) */
 const MODELS = {
-  chatModel: '', helperModel: 'claude-haiku-5-5', providers: ['anthropic'], openaiModel: '',
+  chatModel: '', helperModel: 'claude-haiku-5-5', providers: ['openai'], openaiModel: '', openaiApiModel: '', aiModeVersion: 1,
   background: 'classroom', customBackgrounds: [], backgroundOpts: {},
 } as const;
 

@@ -1,3 +1,4 @@
+import { testCleanup } from '../../testCleanup.ts';
 // .env.local writer (server/envFile.ts), all in a temp folder: replace in place, append, remove, keep comments / order /
 // line endings, create from nothing, refuse bad names and values (without echoing them), and the atomic write leaves no temp file.
 import fs from 'node:fs';
@@ -13,7 +14,7 @@ beforeEach(() => {
   file = path.join(dir, '.env.local');
 });
 afterEach(() => {
-  fs.rmSync(dir, { recursive: true, force: true });
+  testCleanup(dir, { recursive: true, force: true });
 });
 
 const SAMPLE = [

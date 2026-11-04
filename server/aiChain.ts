@@ -17,7 +17,7 @@ export type Service = {
 };
 
 /** the routing of a request: the order of the services and, for ChatGPT, the model (absent = the first listed) */
-export type Routing = { providers: ProviderId[]; openaiModel?: string };
+export type Routing = { providers: ProviderId[]; openaiModel?: string; openaiApiModel?: string };
 
 export class RoutingError extends Error {
   readonly status = 400;
@@ -27,12 +27,17 @@ export class RoutingError extends Error {
  * The `providers` and `openaiModel` of a body: an absent (or null) providers list is the default (Claude alone). A list that is
  * not 1 to 2 known ids, none repeated, is a RoutingError (400). openaiModel: a string up to OPENAI_MODEL_MAX_CHARS, '' = none.
  */
-export function parseRouting(v: { providers?: unknown; openaiModel?: unknown }): Routing {
+export function parseRouting(v: { providers?: unknown; openaiModel?: unknown; openaiApiModel?: unknown }): Routing {
   let providers: ProviderId[] = [...DEFAULT_PROVIDERS];
   if (v.providers !== undefined && v.providers !== null) {
     const list = parseProviderList(v.providers);
     if (!list) throw new RoutingError('providers 需為 1 到 2 個不重複的服務（anthropic、openai）');
     providers = list;
+  }
+  let openaiApiModel: string | undefined;
+  if (v.openaiApiModel != null) {
+    if (typeof v.openaiApiModel !== 'string' || v.openaiApiModel.length > OPENAI_MODEL_MAX_CHARS) throw new RoutingError('OpenAI API 模型格式不正確');
+    openaiApiModel = v.openaiApiModel.trim() || undefined;
   }
   let openaiModel: string | undefined;
   if (v.openaiModel !== undefined && v.openaiModel !== null) {
@@ -41,12 +46,12 @@ export function parseRouting(v: { providers?: unknown; openaiModel?: unknown }):
     }
     if (v.openaiModel.trim()) openaiModel = v.openaiModel.trim();
   }
-  return { providers, ...(openaiModel ? { openaiModel } : {}) };
+  return { providers, ...(openaiModel ? { openaiModel } : {}), ...(openaiApiModel ? { openaiApiModel } : {}) };
 }
 
 /** the routing of a raw JSON body (the one-shot routes read it next to their own fields); throws RoutingError or a SyntaxError */
 export function routingOf(raw: string): Routing {
-  return parseRouting(JSON.parse(raw) as { providers?: unknown; openaiModel?: unknown });
+  return parseRouting(JSON.parse(raw) as { providers?: unknown; openaiModel?: unknown; openaiApiModel?: unknown });
 }
 
 const OPENAI_TRANSIENT = /usage_limit|usage_unavailable|rate_limit|insufficient|quota|overloaded|server_error|invalid_request/i;

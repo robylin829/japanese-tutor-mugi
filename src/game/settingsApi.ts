@@ -6,6 +6,7 @@ import { apiFetch } from './apiFetch';
 /** what is set for one key: last4 only when the value is longer than 4 characters; a region shows its name in full */
 export type FieldStatus = { set: boolean; last4?: string; value?: string };
 export type KeysStatus = {
+  openaiApiKey?: FieldStatus;
   anthropicKey: FieldStatus;
   anthropicWorkspace: FieldStatus;
   googleKey: FieldStatus;
@@ -35,6 +36,7 @@ export function readKeysStatus(j: unknown): KeysStatus {
     ? (j as { status: Record<string, unknown> }).status
     : {}) as Record<string, unknown>;
   return {
+    openaiApiKey: readField(s.openaiApiKey),
     anthropicKey: readField(s.anthropicKey),
     anthropicWorkspace: readField(s.anthropicWorkspace),
     googleKey: readField(s.googleKey),

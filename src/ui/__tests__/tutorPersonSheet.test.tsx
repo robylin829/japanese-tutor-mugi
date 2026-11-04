@@ -122,7 +122,7 @@ describe('the sheets: 人物 and 設定', () => {
     await openSheet('設定');
     expect(host.querySelector('.sheet')?.getAttribute('aria-label')).toBe('設定');
     const settings = headings();
-    expect(settings).toEqual(expect.arrayContaining(['AI 服務', '金鑰', '每日預算上限', 'Claude 模型', '聲音', '對話', '用量']));
+    expect(settings).toEqual(expect.arrayContaining(['AI 服務', '金鑰', '聲音', '對話', '用量']));
     for (const moved of ['名字', '人設', '人設圖片', '背景圖片', '人物位置']) expect(settings).not.toContain(moved);
     expect(host.querySelector('input[aria-label="名字"]')).toBeNull();
     await closeSheet();

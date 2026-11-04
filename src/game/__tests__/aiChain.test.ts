@@ -50,9 +50,9 @@ function fakeIo(gone = false) {
 }
 
 describe('routing fields of a body', () => {
-  it('no list is Claude alone; a list keeps its order; the ChatGPT model is trimmed', () => {
-    expect(parseRouting({})).toEqual({ providers: ['anthropic'] });
-    expect(parseRouting({ providers: null })).toEqual({ providers: ['anthropic'] });
+  it('no list is ChatGPT account alone; a list keeps its order; the ChatGPT model is trimmed', () => {
+    expect(parseRouting({})).toEqual({ providers: ['openai'] });
+    expect(parseRouting({ providers: null })).toEqual({ providers: ['openai'] });
     expect(parseRouting({ providers: ['openai', 'anthropic'], openaiModel: ' gpt-5.4 ' })).toEqual({ providers: ['openai', 'anthropic'], openaiModel: 'gpt-5.4' });
     expect(parseRouting({ providers: ['openai'], openaiModel: '' })).toEqual({ providers: ['openai'] });
   });

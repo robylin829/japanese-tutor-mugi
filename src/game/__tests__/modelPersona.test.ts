@@ -1,9 +1,10 @@
+import { testCleanup } from '../../testCleanup.ts';
 // The AI 模型 and 人設 settings: the model and persona fields of the request bodies (server and phone), the validation that
 // refuses anything else, the system prompt with a persona, and the helper routes (速查, 小提醒 judge, tip rewrite) taking
 // their model from the body. Nothing here calls Claude: the upstream is a fake provider or a fetch stub, and the routes
 // are driven only up to their 400 answers (or the status read), with a test key and a temporary folder.
 import { EventEmitter } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -232,7 +233,7 @@ describe('the routes refuse a model outside the list, and report their personas 
   afterEach(() => {
     if (savedKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = savedKey;
-    rmSync(root, { recursive: true, force: true });
+    testCleanup(root, { recursive: true, force: true });
   });
 
   it('GET /api/chat/status gives the default personality per role, not the whole system prompt', async () => {
@@ -280,7 +281,7 @@ describe('the model and persona settings (phone)', () => {
   it('an older save with no model or persona gets the defaults', () => {
     expect(migrateTutor({ name: 'むぎ', sttLang: 'ja-JP' })).toEqual({
       characters: DEFAULT_TUTOR.characters, activeId: 'mugi', sttLang: 'ja-JP', chatModel: '', helperModel: 'claude-haiku-5-5',
-      providers: ['anthropic'], openaiModel: '', background: 'classroom', customBackgrounds: [], backgroundOpts: {},
+      providers: ['openai'], openaiModel: '', openaiApiModel: '', aiModeVersion: 1, background: 'classroom', customBackgrounds: [], backgroundOpts: {},
     });
     expect(DEFAULT_TUTOR.helperModel).toBe('claude-haiku-5-5');
   });

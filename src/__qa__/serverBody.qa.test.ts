@@ -74,10 +74,10 @@ describe('other body checks', () => {
     expect(parseModel(null)).toBeUndefined();
     expect(parseModel('claude-sonnet-5-5')).toBe('claude-sonnet-5-5');
   });
-  it('an unknown provider list is refused (400), an absent one is Claude alone', () => {
+  it('an unknown provider list is refused (400), an absent one is the ChatGPT account', () => {
     expect(() => parseChatBody(base({ providers: ['anthropic', 'anthropic'] }))).toThrow();
     expect(() => parseChatBody(base({ providers: ['google'] }))).toThrow();
-    expect(parseChatBody(base({ providers: undefined })).routing.providers).toEqual(['anthropic']);
+    expect(parseChatBody(base({ providers: undefined })).routing.providers).toEqual(['openai']);
   });
   it('whitespace-only content is refused', () => {
     expect(() => parseChatBody(base({ messages: [{ role: 'user', content: ' \n ' }] }))).toThrow();

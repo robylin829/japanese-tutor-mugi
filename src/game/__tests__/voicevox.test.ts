@@ -1,4 +1,5 @@
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { testCleanup } from '../../testCleanup.ts';
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -57,7 +58,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
-  rmSync(dir, { recursive: true, force: true });
+  testCleanup(dir, { recursive: true, force: true });
 });
 
 const NONE: TtsConfig = { azureKey: '', azureRegion: '', googleKey: '' };

@@ -1,6 +1,7 @@
+import { DEFAULT_TUTOR, TUTOR_KEY } from '../tutor';
 // The chat brain interface: the fallback chain (replyWithFallback) and claudeBrain as a 1:1 wrapper of askClaude.
 // Nothing here calls Claude: fetch is stubbed and the fake brains answer by script.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fallbackChain, replyWithFallback, type BrainCapabilities, type BrainRequest, type ChatBrain } from '../chatBrain';
 import { askClaude, claudeBrain, claudeStatus } from '../claudeBrain';
 
@@ -84,6 +85,7 @@ describe('the chain and the Claude brain', () => {
 });
 
 describe('claudeBrain: a 1:1 wrapper of askClaude', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', { getItem: (key: string) => key === TUTOR_KEY ? JSON.stringify({ ...DEFAULT_TUTOR, providers: ['anthropic'] }) : null, setItem: vi.fn() }));
   const sse = (...parts: string[]) => parts.map((t) => `data: ${JSON.stringify({ type: 'delta', text: t })}\n\n`).join('');
   const done = (text: string) => `data: ${JSON.stringify({ type: 'done', text })}\n\n`;
   afterEach(() => vi.unstubAllGlobals());

@@ -128,7 +128,7 @@ export function LookupSheet(props: { onClose: () => void; ready: boolean; theme?
         </div>
 
         {!ready && (
-          <p className="lk-need" role="status">速查需要 Claude AI 金鑰（.env.local 的 ANTHROPIC_API_KEY）。設定好之後重新開啟就能查。</p>
+          <p className="lk-need" role="status">速查使用目前選擇的 AI 服務。請到設定登入 ChatGPT 帳號，或在電腦設定 OpenAI API key，並手動選擇服務。</p>
         )}
 
         {/* 查 only once the keyboard is down: with it up, the return key just closes it (the answer then shows on a full sheet) */}

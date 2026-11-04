@@ -1,3 +1,4 @@
+import { recycleSync, recycle } from './recycle.ts';
 // Persistent disk cache for synthesized speech: the second level under the in-memory LRU (server/tts.ts).
 // Files: .tts-cache/<sha256 of the cache key, hex>.mp3 (gitignored). The key (and so the text) is never a file name.
 // Lookup: memory → disk (read, promoted to memory, its mtime bumped) → the provider. Store: memory at once, disk in the
@@ -5,8 +6,8 @@
 // the least recently used files (oldest mtime; every hit bumps it) are removed after writes (debounced) and once at startup.
 // Concurrent requests for the same key share one synthesis (fetchOnce).
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
-import { mkdir, readFile, rename, unlink, utimes, writeFile } from 'node:fs/promises';
+import { mkdirSync, readdirSync, statSync } from 'node:fs';
+import { mkdir, readFile, rename, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export const TTS_CACHE_DIR = '.tts-cache';
@@ -102,7 +103,7 @@ export class TtsCache {
       const p = join(this.dir, name);
       if (name.endsWith('.tmp')) {
         // a leftover temp file of an interrupted write
-        try { unlinkSync(p); } catch { /* gone already */ }
+        try { recycleSync(p); } catch { /* gone already */ }
         continue;
       }
       if (!FILE_RE.test(name)) continue;
@@ -190,7 +191,7 @@ export class TtsCache {
       console.warn('[tts-cache] ignoring a damaged file', name);
       this.forget(name);
       // awaited: a fresh write of the same key must not be removed by this late unlink
-      await unlink(join(this.dir, name)).catch(() => { /* already gone */ });
+      await recycle(join(this.dir, name)).catch(() => { /* already gone */ });
       return undefined;
     }
     this.memPut(key, buf);
@@ -270,11 +271,11 @@ export class TtsCache {
       try {
         await rename(tmp, final);
       } catch {
-        await unlink(final).catch(() => { /* not there */ });
+        await recycle(final).catch(() => { /* not there */ });
         await rename(tmp, final);
       }
     } catch (e) {
-      await unlink(tmp).catch(() => { /* no temp file */ });
+      await recycle(tmp).catch(() => { /* no temp file */ });
       throw e;
     }
   }
@@ -313,7 +314,7 @@ export class TtsCache {
     for (const [name] of victims) this.forget(name);
     const failed = await Promise.all(victims.map(async ([name, e]) => {
       try {
-        await unlink(join(this.dir, name));
+        await recycle(join(this.dir, name));
         return false;
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
@@ -347,7 +348,7 @@ export class TtsCache {
     const names = [...this.index.keys()];
     const before = this.stats();
     for (const n of names) this.forget(n);
-    await Promise.all(names.map((n) => unlink(join(this.dir, n)).catch(() => { /* already gone */ })));
+    await Promise.all(names.map((n) => recycle(join(this.dir, n)).catch(() => { /* already gone */ })));
     return before;
   }
 }

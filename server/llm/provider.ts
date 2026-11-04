@@ -33,6 +33,7 @@ export type LlmResult = {
   text: string;
   model?: string;
   usage?: ClaudeUsage;
+  openaiUsage?: { input_tokens: number; output_tokens: number; input_tokens_details?: { cached_tokens?: number } };
   stopReason?: string | null;
 };
 

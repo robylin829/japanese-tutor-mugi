@@ -1,3 +1,4 @@
+import { testCleanup } from '../testCleanup.ts';
 // QA: .env.local writes and budget/keys validation (server/envFile.ts, server/settingsRoutes.ts), in temp folders only.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,7 +18,7 @@ const trusted = (headers: Record<string, string>, opts: GuardOptions) => trusted
 let dir: string;
 let envPath: string;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mugi-qa-env-')); envPath = path.join(dir, '.env.local'); });
-afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+afterEach(() => testCleanup(dir, { recursive: true, force: true }));
 
 const KEY = 'sk-ant-FAKE-TEST-abcd1234';
 

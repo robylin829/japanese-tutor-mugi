@@ -8,7 +8,7 @@ import type { AiServices } from './tutor';
 
 export type JudgeResult = { ok: boolean; feedback: string; by: 'local' | 'claude' | 'none' };
 
-const UNREACHABLE = '和目標句不一樣（無法連線 Claude 做進一步判斷）';
+const UNREACHABLE = '目前選擇的 AI 服務無法判斷，請檢查設定或手動切換服務。';
 
 /** `model`: the 小提醒 model (the settings' 速查與小提醒 model); absent, the server's default */
 export async function judgeSaid(target: string, said: string, model?: string, services?: AiServices): Promise<JudgeResult> {

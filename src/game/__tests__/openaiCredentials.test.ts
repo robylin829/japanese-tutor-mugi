@@ -1,6 +1,7 @@
+import { testCleanup } from '../../testCleanup.ts';
 // The ChatGPT credential store (server/openai/credentials.ts): round trip, encryption at rest, the protector and folder
 // injected (no DPAPI, no icacls), and the rule that an unreadable file or key stops the start and is never overwritten.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,7 +20,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'mugi-tutor-cred-'));
 });
 afterEach(() => {
-  rmSync(dir, { recursive: true, force: true });
+  testCleanup(dir, { recursive: true, force: true });
 });
 
 const account = {
@@ -79,7 +80,7 @@ describe('credential store (encrypted with a protector)', () => {
     const store = openCredentialStore({ directory: dir, protector: xor, restrict: noRestrict });
     store.data.account = { ...account };
     store.save();
-    rmSync(join(dir, MASTER_KEY_FILE));
+    testCleanup(join(dir, MASTER_KEY_FILE));
     const before = readFileSync(join(dir, CREDENTIALS_FILE), 'utf8');
     expect(() => openCredentialStore({ directory: dir, protector: xor, restrict: noRestrict })).toThrow('無法解開登入資料');
     expect(readFileSync(join(dir, CREDENTIALS_FILE), 'utf8')).toBe(before);

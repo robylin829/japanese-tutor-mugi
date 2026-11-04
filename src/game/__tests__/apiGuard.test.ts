@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { testCleanup } from '../../testCleanup.ts';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,7 +15,7 @@ import { createVoicevoxProcess, type VoicevoxProcessDeps } from '../../../server
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'mugi-tutor-guard-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { testCleanup(dir, { recursive: true, force: true }); });
 
 const same = { host: 'localhost:3004', origin: 'http://localhost:3004' };
 // the requests here come over a loopback socket (this PC); the guard refuses a request with no socket or a LAN socket

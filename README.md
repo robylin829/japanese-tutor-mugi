@@ -1,3 +1,5 @@
+> **此 fork 的本機私用版：** 保留 ChatGPT OAuth，新增獨立 OpenAI API key 模式（每日預算 US$2，手動切換，Claude 預設關閉）。請先閱讀 [啟動、手機 HTTPS 與驗收說明](docs/LOCAL-OPENAI.md)。以下保留上游說明，涉及預設服務與自動備援的描述以本 fork 說明為準。
+
 **繁體中文** | [English](README.en.md)
 
 # むぎ 日語家教 · Mugi Tutor

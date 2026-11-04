@@ -1,8 +1,9 @@
+import { recycleSync } from './recycle.ts';
 // Usage tracking: how many paid speech characters and Claude tokens this PC's dev server has sent, per local calendar month.
 // Stored as JSON at .usage/usage.json (gitignored), written debounced and atomically (temp file + rename).
 //   GET /api/usage → { months: { 'YYYY-MM': { tts, claude } }, current: 'YYYY-MM', freeTier }   (read-only)
 // Only requests that went through this server are counted: the official bills are the source of truth.
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join } from 'node:path';
 import type { Plugin } from 'vite';
@@ -427,14 +428,14 @@ export class UsageStore {
         renameSync(tmp, this.file);
       } catch {
         // Windows will not replace a file that is open elsewhere: remove the old one and rename again
-        try { unlinkSync(this.file); } catch { /* not there */ }
+        try { recycleSync(this.file); } catch { /* not there */ }
         renameSync(tmp, this.file);
       }
       this.dirty = false;
       this.firstDirtyAt = undefined;
       this.writes++;
     } catch (e) {
-      try { unlinkSync(tmp); } catch { /* no temp file */ }
+      try { recycleSync(tmp); } catch { /* no temp file */ }
       console.warn('[usage] save failed:', e instanceof Error ? e.message : e);
     }
   }

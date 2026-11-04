@@ -12,6 +12,8 @@ export const FS_DENY: string[] = [
   '**/.git/**',
   // this project's own folders: usage counts, the speech cache (kept and cached audio), the local VOICEVOX engine
   '**/.usage/**',
+  '**/.local-run/**',
+  '**/test-results.json',
   '**/.tts-cache/**',
   '**/.tts-keep/**',
   '**/voicevox_engine/**',

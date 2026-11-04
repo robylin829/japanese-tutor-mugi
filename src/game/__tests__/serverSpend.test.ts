@@ -1,6 +1,7 @@
+import { testCleanup } from '../../testCleanup.ts';
 // Spending on the chat server, with no upstream call: a fake Anthropic stream stands in for the SDK. Covers the usage of
 // streams that end early (aborted, timed out, failed), the estimate for a model with no price, and the concurrency limits.
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,7 +16,7 @@ import { voicevoxQueued } from '../../../server/tts.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'mugi-tutor-spend-')); });
-afterEach(() => { vi.useRealTimers(); rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { vi.useRealTimers(); testCleanup(dir, { recursive: true, force: true }); });
 
 const now = new Date(2026, 9, 28, 12, 0, 0);
 const storeAt = () => new UsageStore({ file: join(dir, 'usage.json'), now: () => now, debounceMs: 60_000 });

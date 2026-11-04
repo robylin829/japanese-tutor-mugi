@@ -1,3 +1,4 @@
+import { testCleanup } from '../testCleanup.ts';
 // Red-team: writing .env.local (server/envFile.ts) and the settings routes (server/settingsRoutes.ts). Every file here is
 // a temp file under the OS temp folder: the project's .env.local is never named. A test named "[發現]" asserts the weakness
 // as it is today.
@@ -13,7 +14,7 @@ import { guardApi } from '../../server/apiGuard.ts';
 
 let dir = '';
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mugi-redteam-env-')); });
-afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { testCleanup(dir, { recursive: true, force: true }); });
 
 const tmpEnv = (name = '.env.local') => path.join(dir, name);
 
@@ -158,7 +159,7 @@ describe('寫入檔案（updateEnvFile）：臨時檔、失敗時不洩漏值', 
     } catch {
       return false;
     } finally {
-      fs.rmSync(d, { recursive: true, force: true });
+      testCleanup(d, { recursive: true, force: true });
     }
   })();
   it.runIf(canSymlink)('[已修] 符號連結的 .env.local：寫入被拒絕（「.env.local 是捷徑，請改成一般檔案」），連結與目標檔都不變', () => {

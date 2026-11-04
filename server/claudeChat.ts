@@ -1,3 +1,5 @@
+import { handleApiSettings } from './openai/apiRoutes.ts';
+import { apiSettings, apiLedger, apiProvider, API_MODELS } from './openai/api.ts';
 // Claude chat endpoint, served by the Vite dev server (vite.config.ts → claudeChatPlugin). The API key is read from
 // .env.local on the PC and never leaves it: the phone only talks to /api/chat on the same origin.
 //   GET  /api/chat/status → { ok, model, personas } ok = a key is configured; personas: the default 人設 text per role
@@ -18,7 +20,7 @@ import {
   isChatModelId, nameText, personaText, type ChatContext, type ChatModeId, type ChatRoleId,
 } from '../src/game/claudeProtocol.ts';
 import { LOOKUP_MAX_CHARS, parseLookupText, type LookupAnswer } from '../src/game/lookup.ts';
-import { fallbackWorthy, firstServing, parseRouting, routingOf, type Routing, type Service } from './aiChain.ts';
+import { fallbackWorthy, firstServing, parseRouting, routingOf, RoutingError, type Routing, type Service } from './aiChain.ts';
 import { createOAuth } from './openai/oauth.ts';
 import { createChatGpt, type ChatGptService } from './openai/service.ts';
 import { dataDirectory, defaultProtector, openCredentialStore } from './openai/credentials.ts';
@@ -35,7 +37,7 @@ import type { LlmChatRequest, LlmProvider, LlmResult, LlmStream } from './llm/pr
 import type { BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 
 /** no service can take the request: Claude has no key and ChatGPT is not signed in (or the list has neither) */
-const NO_SERVICE = { error: 'no_service', message: '尚無可用的 AI 服務：請在電腦上設定 Claude 金鑰，或登入 ChatGPT。' };
+const NO_SERVICE = { error: 'no_service', message: '目前選擇的 AI 服務尚未就緒：請在電腦上登入 ChatGPT 帳號，或設定 OpenAI API key 後手動選擇服務。' };
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_CONTEXT_CHARS = 100;
 /** the beta server-side fallback is opted into explicitly (see the request below) */
@@ -202,7 +204,16 @@ export async function servicesFor(
   const s = readSettings(opts.root, opts.mode);
   const services: Service[] = [];
   let dailyCapped = false;
+  if (routing.providers.includes('openai-api') && routing.providers.length !== 1) throw new RoutingError('OpenAI API 必須單獨選用');
   for (const id of routing.providers) {
+    if (id === 'openai-api') {
+      const api = apiSettings(opts.root, opts.mode);
+      if (!api.key) continue;
+      const model = routing.openaiApiModel || api.model;
+      if (!API_MODELS.includes(model)) throw new RoutingError('OpenAI API 模型未列入支援清單');
+      services.push({ id, model, provider: apiProvider(api.key, apiLedger(opts.root), api.usd), spend: false });
+      continue;
+    }
     if (id === 'anthropic') {
       if (!s.key) continue;
       // the check and the reservation are one synchronous step, so two requests at the same moment cannot both pass the cap
@@ -234,7 +245,8 @@ export async function servicesFor(
 async function servicesOrAnswer(
   res: ServerResponse, routing: Routing, opts: { root: string; mode: string; claudeModel?: string; reserveUsd?: number },
 ): Promise<Service[] | null> {
-  const plan = await servicesFor(routing, opts);
+  let plan: Awaited<ReturnType<typeof servicesFor>>;
+  try { plan = await servicesFor(routing, opts); } catch (e) { json(res, e instanceof RoutingError ? 400 : 503, { error: 'service', message: e instanceof RoutingError ? e.message : '服務暫時無法使用，請檢查設定。' }); return null; }
   if (plan.services.length) {
     // the reservations last until the response is done (or the player is gone), whichever way the request ends
     res.once('close', () => { for (const s of plan.services) s.hold?.(); });
@@ -748,7 +760,7 @@ export async function streamReply(services: Service[], body: ChatBody, io: Reply
   return null;
 }
 
-async function handleChat(req: IncomingMessage, res: ServerResponse, root: string, mode: string) {
+export async function handleChat(req: IncomingMessage, res: ServerResponse, root: string, mode: string) {
   const url = (req.url ?? '/').split('?')[0];
   if (req.method === 'GET' && url.replace(/\/$/, '') === '/status') {
     const s = readSettings(root, mode);
@@ -860,6 +872,14 @@ export function claudeChatPlugin(): Plugin {
       }, guard));
       // the settings from the sheet: the keys in .env.local are written from this PC only, the daily budget from a trusted request (settingsRoutes.ts)
       server.middlewares.use('/api/settings', guardApi((req, res) => {
+        const settingsPath = (req.url ?? '').split('?')[0];
+        if (settingsPath === '/openai-api') {
+          void handleApiSettings(req, res, root, mode, guard).catch(() => {
+            if (!res.headersSent) json(res, 503, { message: 'OpenAI API 設定暫時無法讀取，請在電腦上檢查。' });
+            else if (!res.writableEnded) res.end();
+          });
+          return;
+        }
         handleSettingsApi(req, res, {
           envPath: join(PROJECT_ROOT, '.env.local'),
           guard,
@@ -1034,7 +1054,7 @@ export function lookupAnswer(
   return lookupAnswerWith(anthropicProvider(client), q, onUsage);
 }
 
-async function handleLookup(req: IncomingMessage, res: ServerResponse, root: string, mode: string) {
+export async function handleLookup(req: IncomingMessage, res: ServerResponse, root: string, mode: string) {
   if (req.method !== 'POST') return json(res, 404, { error: 'not_found', message: '沒有這個 API' });
   const parsed = await readRequest(req, res, (raw) => ({ q: parseLookupBody(raw), routing: routingOf(raw), claudeModel: bodyModel(raw) }));
   if (!parsed) return;

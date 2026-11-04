@@ -32,6 +32,7 @@ export default defineConfig({
   },
   preview: { host, port: 4173, allowedHosts: EXTRA_HOSTS },
   build: {
+    emptyOutDir: false, // Preserve old artifacts; cleanup must use the Recycle Bin.
     rolldownOptions: {
       output: {
         // soundtouchjs (LGPL) goes into its own file, so a user can replace or relink it

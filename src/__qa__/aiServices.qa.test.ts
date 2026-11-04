@@ -1,3 +1,4 @@
+import { testCleanup } from '../testCleanup.ts';
 // QA: which services a request gets (server/claudeChat.ts servicesFor), the daily cap, the chat slots, and the fallback rule
 // (server/aiChain.ts). Temp folders and fake services only; no network.
 import fs from 'node:fs';
@@ -12,7 +13,7 @@ import { getUsageStore } from '../../server/usage';
 
 let root: string;
 beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'mugi-qa-svc-')); });
-afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+afterEach(() => testCleanup(root, { recursive: true, force: true }));
 
 const notReady = { ready: () => false, models: async () => [], provider: () => ({} as never) } as never;
 

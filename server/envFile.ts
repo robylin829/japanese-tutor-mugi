@@ -1,3 +1,4 @@
+import { recycleSync } from './recycle.ts';
 // Writes the keys and the daily budget into .env.local, from the settings sheet (server/settingsRoutes.ts). Only the six names
 // in ENV_KEYS can be written. Every other line of the file (comments, other keys, their order, the line endings) is kept as it
 // is; a key that is already there is replaced in place, a missing one is appended, and null removes it. The file is written
@@ -7,6 +8,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 export const ENV_KEYS = [
+  'OPENAI_API_KEY', 'MUGI_OPENAI_DAILY_USD',
   'ANTHROPIC_API_KEY', 'ANTHROPIC_WORKSPACE_ID', 'GOOGLE_TTS_API_KEY', 'AZURE_SPEECH_KEY', 'AZURE_SPEECH_REGION', 'MUGI_DAILY_USD',
 ] as const;
 export type AllowedKey = (typeof ENV_KEYS)[number];
@@ -119,7 +121,7 @@ export function updateEnvFile(filePath: string, updates: Partial<Record<AllowedK
     fs.renameSync(tmp, filePath);
   } catch {
     try {
-      fs.rmSync(tmp, { force: true });
+      recycleSync(tmp);
     } catch { /* the temp file may not exist */ }
     throw new Error(WRITE_MESSAGE);
   }

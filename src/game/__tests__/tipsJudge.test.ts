@@ -33,7 +33,7 @@ describe('judgeSaid', () => {
   it('network error → not ok, with the unreachable message', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
     const r = await judgeSaid('学校に行きました', '学校へ行きました');
-    expect(r).toEqual({ ok: false, feedback: '和目標句不一樣（無法連線 Claude 做進一步判斷）', by: 'none' });
+    expect(r).toEqual({ ok: false, feedback: '目前選擇的 AI 服務無法判斷，請檢查設定或手動切換服務。', by: 'none' });
   });
 
   it('503 (no key) → not ok, unreachable message', async () => {
@@ -46,6 +46,6 @@ describe('judgeSaid', () => {
   it('a malformed response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('not json', { status: 200 })));
     const r = await judgeSaid('学校に行きました', '学校へ行きました');
-    expect(r).toEqual({ ok: false, feedback: '和目標句不一樣（無法連線 Claude 做進一步判斷）', by: 'none' });
+    expect(r).toEqual({ ok: false, feedback: '目前選擇的 AI 服務無法判斷，請檢查設定或手動切換服務。', by: 'none' });
   });
 });

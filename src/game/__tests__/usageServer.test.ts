@@ -1,4 +1,5 @@
-import { mkdtempSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { testCleanup } from '../../testCleanup.ts';
+import { mkdtempSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,7 +9,7 @@ import {
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'mugi-tutor-usage-')); });
-afterEach(() => { vi.useRealTimers(); rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { vi.useRealTimers(); testCleanup(dir, { recursive: true, force: true }); });
 
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h, 0, 0);
 

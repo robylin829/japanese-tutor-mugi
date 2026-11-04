@@ -1,3 +1,4 @@
+import { fetchOpenaiApiStatus, type OpenaiApiStatus } from '../game/openaiApiStatus';
 // 日語家教 (the tutor mode): a pure Japanese chat with a 2D portrait of the active character (人物: むぎ the hamster, 結衣, 悠真, or one
 // the player added). The replies come from Claude in teacher mode (game/claudeBrain askClaude); the chat, the 小提醒 and the notebook,
 // 速查, the mic and the voice loop are the shared pieces. Settings live under their own key (game/tutor.ts); each character has its
@@ -89,14 +90,16 @@ export default function TutorView() {
   const picture = customPicture ?? builtinPicture;
   // a character keeps her saved view when her picture is not the hamster's own (or the player chose one for her)
   const keepsView = activeId !== 'mugi' || customArt !== null;
+  const [api, setApi] = useState<OpenaiApiStatus | null>(null);
   const [claude, setClaude] = useState<ClaudeStatus | null>(null);
   // ChatGPT's sign-in (game/openaiStatus): null until read
   const [chatgpt, setChatgpt] = useState<ChatGptStatus | null>(null);
   const refreshChatGpt = useCallback(() => { void fetchChatGptStatus().then((s) => { if (s) setChatgpt(s); }); }, []);
   // a key was saved in Settings: the server rereads .env.local on each request, so the Claude and speech status are read again now
-  const keysSaved = useCallback(() => { void claudeStatus().then(setClaude); void fetchTtsStatus(); }, []);
+  const keysSaved = useCallback(() => { void claudeStatus().then(setClaude); void fetchTtsStatus(); void fetchOpenaiApiStatus().then(setApi); }, []);
   const [streamText, setStreamText] = useState(''); // her reply while it is still being written
   const [busy, setBusy] = useState(false);
+  useEffect(() => { void fetchOpenaiApiStatus().then(setApi); }, [busy, settings.providers]);
   const [input, setInput] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [sheet, setSheet] = useState<null | 'character' | 'settings' | 'tips' | 'lookup'>(null);
@@ -206,7 +209,7 @@ export default function TutorView() {
 
   const sttLang = settings.sttLang;
   // a reply can come from any chosen service that is ready (Claude with its key, ChatGPT signed in with the plan)
-  const ready = serviceReady(settings.providers, { anthropic: !!claude?.ok, openai: !!chatgpt?.signedIn && !!chatgpt.planEnabled });
+  const ready = serviceReady(settings.providers, { anthropic: !!claude?.ok, openai: !!chatgpt?.signedIn && !!chatgpt.planEnabled, 'openai-api': !!api?.configured && !api.error });
   // her personality as it is sent, and the key that covers it with her name (a change of either starts the request window over)
   const persona = effectivePersona(active);
 
@@ -249,7 +252,7 @@ export default function TutorView() {
       setBusy(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, ready, name, persona, settings.helperModel, settings.providers, settings.openaiModel]);
+  }, [busy, ready, name, persona, settings.helperModel, settings.providers, settings.openaiModel, settings.openaiApiModel]);
 
   const sendRef = useRef(send);
   sendRef.current = send;
@@ -458,7 +461,7 @@ export default function TutorView() {
             {streamText && <li className="her">{rubyNodes(streamText)}</li>}
           </>}
           notes={[
-            !ready && claude !== null && '需要 AI 服務：請到設定的「AI 服務」設定 Claude 金鑰，或登入 ChatGPT',
+            !ready && claude !== null && '請到設定的「AI 服務」登入 ChatGPT 帳號，或設定 OpenAI API key 並選擇服務',
             note || voice.note || (mic.listening ? `聆聽中…（${sttLang === 'ja-JP' ? '日文' : '中文'}）` : ''),
           ]}
           pill={voice.active ? { phase: voice.phase, label: VOICE_LABEL[voice.phase], onStop: voice.stop } : undefined}
@@ -529,11 +532,11 @@ export default function TutorView() {
           {/* the shared 聲音 section; 日語家教 has no sound effects, so its volume rows are 音樂 and 語音 */}
           <SoundSection audio={audio} tts={tts} cloud={cloud} volumes={['music', 'voice']} />
           <CloudKeysSection onSaved={keysSaved} />
-          <AiServiceSection theme="dark" providers={settings.providers} openaiModel={settings.openaiModel}
+          <AiServiceSection theme="dark" providers={settings.providers} openaiModel={settings.openaiModel} openaiApiModel={settings.openaiApiModel}
             claudeOk={claude === null ? null : claude.ok} chatgpt={chatgpt} onChange={(patch) => setPrefs(patch)} onRefresh={refreshChatGpt} onKeysSaved={keysSaved} />
-          <BudgetSection />
-          <ModelSection theme="dark" chatModel={settings.chatModel} helperModel={settings.helperModel}
-            serverModel={claude === null ? null : claude.model} onChange={(patch) => setPrefs(patch)} />
+          {settings.providers.includes('anthropic') && <BudgetSection />}
+          {settings.providers.includes('anthropic') && <ModelSection theme="dark" chatModel={settings.chatModel} helperModel={settings.helperModel}
+            serverModel={claude === null ? null : claude.model} onChange={(patch) => setPrefs(patch)} />}
           <ChatDataSection count={chat.length} onClear={clearChat} />
           <UsageSection />
         </SettingsSheet>

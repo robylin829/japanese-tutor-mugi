@@ -12,19 +12,19 @@ afterEach(() => {
 });
 
 describe('AI service settings', () => {
-  it('the default is Claude alone, with no ChatGPT model chosen', () => {
-    expect(DEFAULT_TUTOR.providers).toEqual(['anthropic']);
+  it('the default is ChatGPT account alone, with no ChatGPT model chosen', () => {
+    expect(DEFAULT_TUTOR.providers).toEqual(['openai']);
     expect(DEFAULT_TUTOR.openaiModel).toBe('');
   });
 
   it('an older save gets the defaults; a saved order and model are kept', () => {
-    expect(migrateTutor({ name: 'x' })).toMatchObject({ providers: ['anthropic'], openaiModel: '' });
-    expect(migrateTutor({ providers: ['openai', 'anthropic'], openaiModel: ' gpt-5.4 ' })).toMatchObject({ providers: ['openai', 'anthropic'], openaiModel: 'gpt-5.4' });
+    expect(migrateTutor({ name: 'x' })).toMatchObject({ providers: ['openai'], openaiModel: '', openaiApiModel: '', aiModeVersion: 1 });
+    expect(migrateTutor({ providers: ['openai', 'anthropic'], openaiModel: ' gpt-5.4 ' })).toMatchObject({ providers: ['openai'], openaiModel: 'gpt-5.4' });
   });
 
-  it('a broken list (unknown, repeated, too long, not a list) falls back to Claude alone', () => {
+  it('a broken list (unknown, repeated, too long, not a list) falls back to ChatGPT account alone', () => {
     for (const providers of ['openai', ['gemini'], ['openai', 'openai'], ['anthropic', 'openai', 'anthropic'], [], null]) {
-      expect(migrateTutor({ providers })).toMatchObject({ providers: ['anthropic'] });
+      expect(migrateTutor({ providers })).toMatchObject({ providers: ['openai'] });
     }
     expect(parseProviderList(['anthropic', 'openai'])).toEqual(['anthropic', 'openai']);
   });
@@ -38,9 +38,9 @@ describe('AI service settings', () => {
 
   it('the routing of a request is the order and the model', () => {
     expect(aiServicesOf({ ...DEFAULT_TUTOR, providers: ['openai', 'anthropic'], openaiModel: 'gpt-5.4' })).toEqual({
-      providers: ['openai', 'anthropic'], openaiModel: 'gpt-5.4',
+      providers: ['openai'], openaiModel: 'gpt-5.4',
     });
-    expect(aiServicesOf(DEFAULT_TUTOR)).toEqual({ providers: ['anthropic'] });
+    expect(aiServicesOf(DEFAULT_TUTOR)).toEqual({ providers: ['openai'] });
   });
 
   it('a service is ready when it has its key (Claude) or is signed in (ChatGPT); the list is ready when one of its services is', () => {

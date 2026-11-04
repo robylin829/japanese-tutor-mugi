@@ -17,6 +17,7 @@ import {
 import { emitReply, nextReplyId } from './replyBus';
 import { stripTipLabel } from './tipsBook';
 import { activeCharacter, aiServicesOf, effectivePersona, loadTutor, serviceReady, TUTOR_DEFAULT_NAME, type AiServices } from './tutor';
+import { fetchOpenaiApiStatus } from './openaiApiStatus';
 import { chatGptReady } from './openaiStatus';
 
 /** `personas`: the default personality text per role (from the server, shown in the 人設 settings) */
@@ -526,7 +527,8 @@ export const claudeBrain: ChatBrain = {
     const cfg = loadTutor();
     const anthropic = cfg.providers.includes('anthropic') && (lastStatus ?? (await claudeStatus())).ok;
     const openai = cfg.providers.includes('openai') && (await chatGptReady());
-    return serviceReady(cfg.providers, { anthropic, openai });
+    const api = cfg.providers.includes('openai-api') ? await fetchOpenaiApiStatus() : null;
+    return serviceReady(cfg.providers, { anthropic, openai, 'openai-api': !!api?.configured && !api.error });
   },
   async reply(req) {
     const c = await askClaude({

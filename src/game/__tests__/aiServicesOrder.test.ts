@@ -1,7 +1,8 @@
+import { testCleanup } from '../../testCleanup.ts';
 // Which services a request gets (claudeChat.servicesFor): the player's order, Claude needs its key, ChatGPT needs the signed-in
 // plan and a model (the one named when listed, else the first listed). No network: the Claude key is only read, never called,
 // and the ChatGPT service is a fake. The folder is a temporary one, so no .env.local is read.
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -18,7 +19,7 @@ beforeEach(() => {
 afterEach(() => {
   if (savedKey === undefined) delete process.env.ANTHROPIC_API_KEY;
   else process.env.ANTHROPIC_API_KEY = savedKey;
-  rmSync(dir, { recursive: true, force: true });
+  testCleanup(dir, { recursive: true, force: true });
 });
 
 const provider = { id: 'openai', streamChat: () => { throw new Error('not called'); }, complete: async () => { throw new Error('not called'); }, describeError: () => ({ status: 500, message: '' }) } as unknown as LlmProvider;

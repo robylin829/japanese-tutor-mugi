@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { testCleanup } from '../../testCleanup.ts';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -127,7 +128,7 @@ describe('month reset', () => {
         kind: 'use', engine: 'google', voice: 'ja-JP-Neural2-B', requestedTier: 'neural2', fallback: false,
       });
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      testCleanup(dir, { recursive: true, force: true });
     }
   });
 });

@@ -1,3 +1,4 @@
+import { fetchOpenaiApiStatus, saveOpenaiApiBudget, type OpenaiApiStatus } from '../game/openaiApiStatus';
 // The ⚙️ settings sheet parts of 日語家教 (TutorView): the sheet shell, the 聲音 section
 // (mute, volumes, 朗讀回覆, the per-language voice groups), the 對話 section (the chat count and its clear) and the 用量 section.
 // The view keeps its own rows (名字, 其他) and passes them in as children.
@@ -16,7 +17,7 @@ import {
 import { DEFAULT_SCENE, DIM_MAX, isBuiltinBackground, newBackgroundId } from '../game/tutorScene';
 import { useSheetKeyboard } from './useSheetKeyboard';
 import { getTtsSettings, onTtsSettings, setTtsSettings, ttsAvailable, type TtsSettings } from '../game/tts';
-import { CHAT_MODEL_CHOICES, PERSONA_MAX_CHARS, PROVIDERS_MAX, PROVIDER_LABELS, chatModelLabel, clipCodePoints, type ChatModelId, type ProviderId } from '../game/claudeProtocol';
+import { CHAT_MODEL_CHOICES, PERSONA_MAX_CHARS, PROVIDER_LABELS, chatModelLabel, clipCodePoints, type ChatModelId, type ProviderId } from '../game/claudeProtocol';
 import { logoutChatGpt, startChatGptLogin, type ChatGptStatus } from '../game/openaiStatus';
 import { fetchBudget, fetchKeysStatus, saveBudget, saveKeys, type BudgetStatus, type FieldStatus, type KeyName, type KeysStatus } from '../game/settingsApi';
 import { budgetLine } from '../game/budgetEstimate';
@@ -139,7 +140,7 @@ export function ModelSection({ chatModel, helperModel, serverModel, onChange, th
 }
 
 /** the services the settings list, in the order the player keeps them (a service that is off is listed after the ones on) */
-const SERVICE_IDS: ProviderId[] = ['anthropic', 'openai'];
+const SERVICE_IDS: ProviderId[] = ['openai', 'openai-api'];
 
 /** whether this page is opened on the PC itself (127.0.0.1, localhost or [::1]): the keys and the ChatGPT sign-in are set only there (the server checks the same) */
 export function isLocalPc(): boolean {
@@ -251,108 +252,61 @@ export function CloudKeysSection({ onSaved, localPc = isLocalPc() }: { onSaved?:
  * phone sees only the status). ChatGPT signs in and out with its buttons on the PC only; a phone sees the status and picks the model.
  * `claudeOk` / `chatgpt`: null until read. theme 'dark': the dark sheet.
  */
-export function AiServiceSection({ providers, openaiModel, claudeOk, chatgpt, onChange, onRefresh, onKeysSaved, localPc = isLocalPc(), theme }: {
-  providers: ProviderId[]; openaiModel: string; claudeOk: boolean | null; chatgpt: ChatGptStatus | null;
-  onChange: (patch: { providers?: ProviderId[]; openaiModel?: string }) => void;
-  /** re-reads the ChatGPT status (after a sign-in or sign-out) */
-  onRefresh: () => void;
-  /** a key was saved: the view re-reads the Claude status (the server rereads .env.local on every request) */
-  onKeysSaved?: () => void;
-  /** on the PC: the key boxes and the ChatGPT buttons; from a phone: the status only (see isLocalPc) */
-  localPc?: boolean; theme?: 'dark';
+export function AiServiceSection({ providers, openaiModel, openaiApiModel = '', claudeOk, chatgpt, onChange, onRefresh, onKeysSaved, localPc = isLocalPc(), theme }: {
+  providers: ProviderId[]; openaiModel: string; openaiApiModel?: string; claudeOk: boolean | null; chatgpt: ChatGptStatus | null;
+  onChange: (patch: { providers?: ProviderId[]; openaiModel?: string; openaiApiModel?: string }) => void;
+  onRefresh: () => void; onKeysSaved?: () => void; localPc?: boolean; theme?: 'dark';
 }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
-  const rows = [...providers, ...SERVICE_IDS.filter((id) => !providers.includes(id))];
-
-  const toggle = (id: ProviderId, on: boolean) => {
-    if (on && !providers.includes(id) && providers.length < PROVIDERS_MAX) onChange({ providers: [...providers, id] });
-    else if (!on && providers.includes(id) && providers.length > 1) onChange({ providers: providers.filter((p) => p !== id) });
-  };
-  const move = (id: ProviderId, dir: -1 | 1) => {
-    const i = providers.indexOf(id);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= providers.length) return;
-    const next = [...providers];
-    [next[i], next[j]] = [next[j], next[i]];
-    onChange({ providers: next });
-  };
-
+  const [keys, setKeys] = useKeysStatus();
+  const [api, setApi] = useState<OpenaiApiStatus | null>(null);
+  const [draft, setDraft] = useState('');
+  const refreshApi = async () => { const s = await fetchOpenaiApiStatus(); if (s) { setApi(s); setDraft(String(s.usd)); } };
+  useEffect(() => { let alive = true; void fetchOpenaiApiStatus().then((s) => { if (alive && s) { setApi(s); setDraft(String(s.usd)); } }); return () => { alive = false; }; }, []);
   const login = async () => {
-    setBusy(true);
-    setNote('');
-    const r = await startChatGptLogin();
-    if (!r.ok) {
-      setNote(r.message);
-      setBusy(false);
-      return;
-    }
-    // the consent page; it sends the browser back to this PC's 127.0.0.1 and then to the home page
+    setBusy(true); setNote(''); const r = await startChatGptLogin();
+    if (!r.ok) { setNote(r.message); setBusy(false); return; }
     window.location.href = r.url;
   };
-  const logout = async () => {
-    setBusy(true);
-    setNote('');
-    const warning = await logoutChatGpt();
-    setNote(warning);
-    setBusy(false);
-    onRefresh();
-  };
-
-  const claudeText = claudeOk === null ? '讀取中…' : claudeOk ? '已設定金鑰' : '未設定金鑰（在電腦的 .env.local 填 ANTHROPIC_API_KEY）';
-  const chatgptText = chatgpt === null ? '讀取中…'
-    : !chatgpt.signedIn ? '未登入'
-      : chatgpt.planEnabled ? `已登入${chatgpt.email ? `（${chatgpt.email}）` : ''}` : '已登入，但沒有 ChatGPT 方案的使用權，請重新登入';
+  const logout = async () => { setBusy(true); setNote(await logoutChatGpt()); setBusy(false); onRefresh(); };
   const models = chatgpt?.models ?? [];
-  const selectedModel = models.some((m) => m.slug === openaiModel) ? openaiModel : (models[0]?.slug ?? '');
-
-  return (
-    <div className={theme === 'dark' ? 'as-ai-sec as-dark' : 'as-ai-sec'}>
-      <h3>AI 服務</h3>
-      <ul className="as-ai-list">
-        {rows.map((id) => {
-          const on = providers.includes(id);
-          const i = providers.indexOf(id);
-          const label = PROVIDER_LABELS[id];
-          const lastOn = on && providers.length === 1;
-          return (
-            <li key={id} className="as-ai-item">
-              <div className="as-row">
-                <span>{label}<small>{id === 'anthropic' ? claudeText : chatgptText}</small></span>
-                <label className="as-ai-switch"><span>使用</span>
-                  <input type="checkbox" role="switch" aria-label={`${label} 使用`} checked={on} disabled={lastOn}
-                    onChange={(e) => toggle(id, e.currentTarget.checked)} /></label>
-                <button className="as-small" aria-label={`${label} 上移`} disabled={!on || i <= 0} onClick={() => move(id, -1)}>上移</button>
-                <button className="as-small" aria-label={`${label} 下移`} disabled={!on || i < 0 || i >= providers.length - 1} onClick={() => move(id, 1)}>下移</button>
-              </div>
-              {id === 'anthropic' && <AnthropicKeys onSaved={onKeysSaved} localPc={localPc} />}
-              {id === 'openai' && (
-                <div className="as-ai-chatgpt">
-                  {!localPc && chatgpt !== null && <small className="as-ai-hint">ChatGPT 只能在電腦上登入或登出</small>}
-                  {localPc && chatgpt !== null && !chatgpt.signedIn && (
-                    <button className="as-small" disabled={busy} onClick={() => void login()}>用 ChatGPT 登入</button>
-                  )}
-                  {localPc && chatgpt?.signedIn && (
-                    <button className="as-small" disabled={busy} onClick={() => void logout()}>登出</button>
-                  )}
-                  {chatgpt?.signedIn && models.length > 0 && (
-                    <label className="as-ai-model"><span>ChatGPT 模型</span>
-                      <select aria-label="ChatGPT 模型" value={selectedModel} disabled={busy}
-                        onChange={(e) => onChange({ openaiModel: e.currentTarget.value })}>
-                        {models.map((m) => <option key={m.slug} value={m.slug}>{m.label}</option>)}
-                      </select></label>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {note && <div className="as-lang-note" role="status"><small>{note}</small></div>}
-      <div className="as-lang-note"><small>ChatGPT 使用你自己方案的額度，不需要 OpenAI API 金鑰；登入資料加密存在電腦的使用者資料夾，不會傳到手機。依 OpenAI 條款，請勿分享帳號。</small></div>
-      <div className="as-lang-note"><small>金鑰會寫進電腦上的 .env.local，畫面只顯示末四碼。</small></div>
-    </div>
-  );
+  const chatgptText = chatgpt === null ? '讀取中…' : !chatgpt.signedIn ? '未登入' : chatgpt.planEnabled ? `已登入${chatgpt.email ? `（${chatgpt.email}）` : ''}` : '已登入，但未授權方案用量，請重新登入';
+  const changed = (s: KeysStatus) => { setKeys(s); onKeysSaved?.(); void refreshApi(); };
+  const budget = Number(draft);
+  const valid = draft.trim() !== '' && Number.isFinite(budget) && budget >= 0 && budget <= 100 && Math.abs(budget * 100 - Math.round(budget * 100)) < 1e-9;
+  return <div className={theme === 'dark' ? 'as-ai-sec as-dark' : 'as-ai-sec'}>
+    <h3>AI 服務</h3>
+    <p><small>一次使用一個服務；失敗或額度不足時，請手動切換。不會自動使用付費 API。</small></p>
+    <ul className="as-ai-list">
+      {SERVICE_IDS.map((id) => <li key={id} className="as-ai-item">
+        <div className="as-row"><span>{PROVIDER_LABELS[id]}<small>{id === 'openai' ? chatgptText : api === null ? '讀取中…' : api.configured ? '已設定 API key，依 API 用量計費' : '未設定 API key'}</small></span>
+          <label><input type="radio" name="ai-service" aria-label={`${PROVIDER_LABELS[id]} 使用`} checked={providers[0] === id} onChange={() => onChange({ providers: [id] })} />使用</label>
+        </div>
+        {id === 'openai' ? <div className="as-ai-chatgpt">
+          {!localPc && <small>ChatGPT 只能在電腦上登入或登出</small>}
+          {localPc && chatgpt !== null && <button className="as-small" disabled={busy} onClick={() => void (chatgpt.signedIn ? logout() : login())}>{chatgpt.signedIn ? '登出' : '用 ChatGPT 登入'}</button>}
+          {chatgpt?.signedIn && models.length > 0 && <label>ChatGPT 帳號模型<select aria-label="ChatGPT 模型" value={models.some((m) => m.slug === openaiModel) ? openaiModel : models[0].slug} onChange={(e) => onChange({ openaiModel: e.currentTarget.value })}>{models.map((m) => <option key={m.slug} value={m.slug}>{m.label}</option>)}</select></label>}
+          <small>ChatGPT 使用自己方案的額度，不需要 OpenAI API 金鑰。登入憑證只留在電腦，與 API key 分開保存。登出不會清除 API key。請勿分享帳號。</small>
+        </div> : <div className="as-ai-chatgpt">
+          <KeyField label="OpenAI API key" field="openaiApiKey" status={keys?.openaiApiKey ?? null} localPc={localPc} onSaved={changed} />
+          {!localPc && <small>API key 與預算只能在電腦上設定；手機可以選服務及模型。</small>}
+          <label>OpenAI API 模型<select aria-label="OpenAI API 模型" value={openaiApiModel || api?.model || 'gpt-5.4-mini'} onChange={(e) => onChange({ openaiApiModel: e.currentTarget.value })}>{(api?.models ?? ['gpt-5.4-mini']).map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+          <label>API 每日預算（美元）<input aria-label="OpenAI API 每日預算" type="number" min="0" max="100" step="0.01" value={draft} disabled={!localPc || busy} onChange={(e) => setDraft(e.currentTarget.value)} /></label>
+          {localPc && <button className="as-small" disabled={!valid || busy} onClick={() => { setBusy(true); void saveOpenaiApiBudget(budget).then(async (r) => { setNote(r.message); if (r.ok) await refreshApi(); }).finally(() => setBusy(false)); }}>儲存 API 預算</button>}
+          <button className="as-small" onClick={() => void refreshApi()}>更新 API 用量</button>
+          <p><small>今日估算費用：{api?.spentTodayUsd === undefined ? '尚無資料' : `$${api.spentTodayUsd.toFixed(4)}`}；請求 {api?.requests ?? 0} 次，錯誤 {api?.errors ?? 0} 次，估算 {api?.estimatedRequests ?? 0} 次。輸入 {api?.inputTokens ?? 0}／快取 {api?.cachedInputTokens ?? 0}／輸出 {api?.outputTokens ?? 0} tokens。</small></p>
+          <small>每日預設 US$2；0 表示停止 API 請求。以台北午夜換日，包含進行中的預留費用。費用為估算，以 OpenAI 帳單為準。</small>
+          {api?.error && <p role="alert">{api.error}</p>}
+        </div>}
+      </li>)}
+    </ul>
+    <details><summary>Claude 相容設定（目前不使用）</summary>
+      <p>{claudeOk ? '已設定 Claude key；目前不會自動使用' : '未設定 Claude key；不影響 ChatGPT 與 OpenAI API'}</p>
+      <AnthropicKeys onSaved={onKeysSaved} localPc={localPc} />
+    </details>
+    {note && <div role="status">{note}</div>}
+  </div>;
 }
 
 /**
